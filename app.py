@@ -4,7 +4,7 @@ import pandas as pd
 import requests
 from PIL import Image
 import time
-from streamlit_lottie import st_lottie
+from streamlit-lottie import st-lottie
 
 
 # --- Load Data ---
