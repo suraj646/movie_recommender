@@ -4,8 +4,6 @@ import pandas as pd
 import requests
 from PIL import Image
 import time
-from streamlit_lottie import st_lottie
-
 
 # --- Load Data ---
 @st.cache_data
@@ -14,22 +12,10 @@ def load_data():
     similarities = pickle.load(open('similarity.pkl', 'rb'))
     return movies_df, similarities
 
-
 movies_df, similarities = load_data()
 
 # --- OMDB API Setup ---
 OMDB_API_KEY = "15a168c3"
-
-
-# --- Load Lottie Animation ---
-def load_lottie_url(url):
-    r = requests.get(url)
-    if r.status_code != 200:
-        return None
-    return r.json()
-
-
-lottie_movie = load_lottie_url("https://assets1.lottiefiles.com/packages/lf20_5tkzkblw.json")
 
 # --- Custom CSS ---
 st.markdown("""
@@ -79,12 +65,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- App Header ---
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    st.markdown('<h1 class="title">🍿 Movie Magic Recommender</h1>', unsafe_allow_html=True)
-    if lottie_movie:
-        st_lottie(lottie_movie, height=200, key="movie")
-
+st.markdown('<h1 class="title">🍿 Movie Magic Recommender</h1>', unsafe_allow_html=True)
 
 # --- Movie Poster Fetch ---
 @st.cache_data(ttl=3600)
@@ -97,14 +78,12 @@ def fetch_poster(movie_title):
     except:
         return None
 
-
 # --- Recommendation Engine ---
 def recommend(movie):
     movie_index = movies_df[movies_df['title'] == movie].index[0]
     distances = similarities[movie_index]
     movies_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:6]
     return [movies_df.iloc[i[0]].title for i in movies_list]
-
 
 # --- Main App ---
 with st.container():
@@ -128,7 +107,7 @@ with st.container():
             with col1:
                 st.markdown(f'<div class="movie-card">', unsafe_allow_html=True)
                 st.image(poster_url if poster_url else "https://via.placeholder.com/300x450?text=No+Poster",
-                         use_container_width=True)  # Fixed: Replaced use_column_width
+                         use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
 
             with col2:
@@ -160,7 +139,7 @@ with st.container():
                     st.markdown(f'<div class="movie-card">', unsafe_allow_html=True)
                     st.image(poster if poster else "https://via.placeholder.com/200x300?text=No+Poster",
                              caption=movie,
-                             use_container_width=True)  # Fixed: Replaced use_column_width
+                             use_container_width=True)
                     st.markdown('</div>', unsafe_allow_html=True)
 
 # --- Footer ---
