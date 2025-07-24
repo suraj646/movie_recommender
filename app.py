@@ -1,151 +1,75 @@
 import streamlit as st
-import pickle
 import pandas as pd
-import requests
-from PIL import Image
-import time
+import numpy as np
+import pickle
 
-# --- Load Data ---
+# ✅ Page configuration
+st.set_page_config(page_title="Movie Recommender 🎬", layout="centered", page_icon="🎞️")
+
+
+# ✅ Load data
 @st.cache_data
 def load_data():
     movies_df = pickle.load(open('movies.pkl', 'rb'))
     similarities = pickle.load(open('similarity.pkl', 'rb'))
     return movies_df, similarities
 
+
 movies_df, similarities = load_data()
 
-# --- OMDB API Setup ---
-OMDB_API_KEY = "15a168c3"
-
-# --- Custom CSS ---
-st.markdown("""
-<style>
+# ✅ Custom style (basic light theme)
+st.markdown(
+    """
+    <style>
     .main {
-        background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-        color: white;
+        background-color: #0e1117;  /* For dark theme */
     }
-    .stSelectbox > div > div {
-        background-color: #2d2d2d !important;
-        color: white !important;
+    .recommend-box {
+        background-color: #ffffff;
+        color: #000000;  /* <- Make text visible */
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
-    .movie-card {
-        border-radius: 10px;
-        padding: 15px;
-        margin: 10px;
-        background: rgba(45, 45, 45, 0.7);
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-    .movie-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.3);
-    }
-    .title {
-        font-size: 2.5rem;
-        background: linear-gradient(90deg, #ff8a00, #e52e71);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        text-align: center;
-        margin-bottom: 20px;
-    }
-    .recommend-btn {
-        width: 100%;
-        padding: 12px;
-        border-radius: 25px;
-        background: linear-gradient(90deg, #ff8a00, #e52e71);
-        color: white;
-        font-weight: bold;
-        border: none;
-        transition: all 0.3s;
-    }
-    .recommend-btn:hover {
-        transform: scale(1.05);
-        box-shadow: 0 5px 15px rgba(255, 138, 0, 0.4);
-    }
-</style>
-""", unsafe_allow_html=True)
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
-# --- App Header ---
-st.markdown('<h1 class="title">🍿 Movie Magic Recommender</h1>', unsafe_allow_html=True)
+# ✅ App title and subtitle
+st.markdown("<h1 style='text-align: center;'>🎬 Movie Recommender System</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center;'>Find movies similar to your favorite ones!</p>", unsafe_allow_html=True)
+st.markdown("---")
 
-# --- Movie Poster Fetch ---
-@st.cache_data(ttl=3600)
-def fetch_poster(movie_title):
-    try:
-        formatted_title = movie_title.replace(" ", "+")
-        url = f"http://www.omdbapi.com/?t={formatted_title}&apikey={OMDB_API_KEY}"
-        response = requests.get(url).json()
-        return response['Poster'] if 'Poster' in response and response['Poster'] != 'N/A' else None
-    except:
+# ✅ Movie selection
+movie_name = st.selectbox("📽️ Select a Movie:", sorted(movies_df['title'].unique()))
+
+
+# ✅ Recommendation logic
+def recommend(movie):
+    matched_movies = movies_df[movies_df['title'].str.lower().str.strip() == movie.lower().strip()]
+
+    if matched_movies.empty:
         return None
 
-# --- Recommendation Engine ---
-def recommend(movie):
-    movie_index = movies_df[movies_df['title'] == movie].index[0]
+    movie_index = matched_movies.index[0]
     distances = similarities[movie_index]
-    movies_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:6]
-    return [movies_df.iloc[i[0]].title for i in movies_list]
+    movie_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:6]
 
-# --- Main App ---
-with st.container():
-    selected_movie = st.selectbox(
-        "🎬 Select a movie you love:",
-        movies_df['title'].values,
-        index=0,
-        help="Choose a movie to get similar recommendations"
-    )
+    return [movies_df.iloc[i[0]].title for i in movie_list]
 
-    if st.button("✨ Get Magic Recommendations", key="recommend_btn", help="Click to see recommendations"):
-        with st.spinner('🔮 Finding cinematic treasures...'):
-            time.sleep(1)  # Simulate loading
-            recommendations = recommend(selected_movie)
 
-            # Selected Movie Display
-            st.success("Here's what we found!")
-            poster_url = fetch_poster(selected_movie)
+# ✅ Recommend button
+if st.button("🎯 Recommend"):
+    recommendations = recommend(movie_name)
+    if recommendations:
+        st.markdown("### ✅ Top 5 Recommendations:")
+        for i, movie in enumerate(recommendations, 1):
+            st.markdown(f"<div class='recommend-box'><b>{i}. {movie}</b></div>", unsafe_allow_html=True)
+    else:
+        st.error("❌ Movie not found. Please try a different title.")
 
-            col1, col2 = st.columns([1, 2])
-            with col1:
-                st.markdown(f'<div class="movie-card">', unsafe_allow_html=True)
-                st.image(poster_url if poster_url else "https://via.placeholder.com/300x450?text=No+Poster",
-                         use_container_width=True)
-                st.markdown('</div>', unsafe_allow_html=True)
-
-            with col2:
-                try:
-                    movie_data = requests.get(
-                        f"http://www.omdbapi.com/?t={selected_movie.replace(' ', '+')}&apikey={OMDB_API_KEY}"
-                    ).json()
-
-                    st.markdown(f"""
-                    <div class="movie-card">
-                        <h3>{selected_movie}</h3>
-                        <p>⭐ <b>Rating:</b> {movie_data.get('imdbRating', 'N/A')}</p>
-                        <p>📅 <b>Year:</b> {movie_data.get('Year', 'N/A')}</p>
-                        <p>⏱️ <b>Runtime:</b> {movie_data.get('Runtime', 'N/A')}</p>
-                        <p>🎭 <b>Genre:</b> {movie_data.get('Genre', 'N/A')}</p>
-                        <p>📜 <b>Plot:</b> {movie_data.get('Plot', 'Not available')}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                except:
-                    st.warning("Couldn't fetch additional details for this movie")
-
-            # Recommendations Display
-            st.markdown("## 🎥 You Might Also Enjoy...")
-            cols = st.columns(5)
-
-            for i, movie in enumerate(recommendations):
-                with cols[i]:
-                    poster = fetch_poster(movie)
-                    st.markdown(f'<div class="movie-card">', unsafe_allow_html=True)
-                    st.image(poster if poster else "https://via.placeholder.com/200x300?text=No+Poster",
-                             caption=movie,
-                             use_container_width=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
-
-# --- Footer ---
+# ✅ Footer
 st.markdown("---")
-st.markdown("""
-<div style="text-align: center; padding: 20px;">
-    <p>Made with ❤️ using Streamlit | Movie data from OMDB API</p>
-</div>
-""", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: gray;'>Made with ❤️ using Streamlit</p>", unsafe_allow_html=True)
