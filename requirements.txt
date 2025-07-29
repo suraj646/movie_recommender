@@ -2,6 +2,6 @@ streamlit
 pandas
 numpy
 pickle
-scikit learn
+scikit-learn
 nltk
 ast
