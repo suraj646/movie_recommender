@@ -2,3 +2,6 @@ streamlit
 pandas
 numpy
 pickle
+scikit learn
+nltk
+ast
